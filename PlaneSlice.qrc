@@ -1,0 +1,17 @@
+<RCC>
+    <qresource prefix="/PlaneSlice">
+        <file>icons/align.png</file>
+        <file>icons/analysis.png</file>
+        <file>icons/clear.png</file>
+        <file>icons/files.png</file>
+        <file>icons/how.png</file>
+        <file>icons/in_setting.png</file>
+        <file>icons/keypress.png</file>
+        <file>icons/negtive.png</file>
+        <file>icons/positive.png</file>
+        <file>icons/reset.png</file>
+        <file>icons/setting.png</file>
+        <file>icons/center.png</file>
+        <file>icons/icon-shear.png</file>
+    </qresource>
+</RCC>
