@@ -269,24 +269,6 @@ void PlaneSlice::m_mouseClickEvent()
             //imageActor3->SetMapper(tempMapper);
             //imageActor3->GetProperty()->SetColor(1, 0, 0);
             //renderer->AddActor(imageActor3);
-
-            polyLine->GetPointIds()->SetNumberOfIds(points->GetNumberOfPoints());
-            for(int i = 0; i < points->GetNumberOfPoints(); i++)
-            {
-                polyLine->GetPointIds()->SetId(i, i);
-            }
-
-            grid->Allocate(1, 1);
-            grid->InsertNextCell(polyLine->GetCellType(), polyLine->GetPointIds());
-            grid->SetPoints(points);
-            mapper->SetInputData(grid);
-            actor->SetMapper(mapper);
-            actor->GetProperty()->SetColor(1.0, 0.0, 0.0); //设置颜色
-
-
-            m_isClipOk = true;
-
-            interactor->Render();
         }
         else
         {
