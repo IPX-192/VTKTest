@@ -32,13 +32,15 @@ public:
 
     void cilp2();
 
+    void initTest();
+
 private:
     Ui::PlaneSliceClass ui;
 
     bool m_IsSlicing = false;
     bool m_isClipOk = false;
     int pos_num = 0;
-    float plane_pos[9];
+    float plane_pos[90];
 
     vtkSmartPointer<vtkAxesActor> axesActor;
     vtkSmartPointer<vtkTransform> axesTransformer;
@@ -59,7 +61,27 @@ private:
 
 
 
+    //新增
+    vtkSmartPointer<vtkPoints> pointList;
+    vtkSmartPointer<vtkPolyData> pointListPolyData;
+    vtkSmartPointer<vtkPolyDataMapper> pointListMapper;
+    vtkSmartPointer<vtkActor> pointListActor;
+    vtkSmartPointer<vtkLineSource> line;
+    vtkSmartPointer<vtkPolyDataMapper> lineMapper;
+    vtkSmartPointer<vtkActor> lineActor;
+    vtkSmartPointer<vtkSphereSource> point;
+    vtkSmartPointer<vtkPolyDataMapper> pointMapper;
+    vtkSmartPointer<vtkActor> pointActor;
+    vtkSmartPointer<vtkCellArray> polygons;
+    vtkPolyLine *polyLine;
+
+
+
 public slots:
     void m_mouseClickEvent();
+
+    void m_mouseClickEvent1();
+
+    void m_mouseRightEvent();
 
 };

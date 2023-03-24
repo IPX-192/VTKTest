@@ -10,11 +10,13 @@ CONFIG += c++17
 
 
 SOURCES += \
+    MouseInteractorStyle.cpp \
     SurfaceClipper.cpp \
     main.cpp \
     PlaneSlice.cpp
 
 HEADERS += \
+    MouseInteractorStyle.h \
     PlaneSlice.h\
     SurfaceClipper.h \
     includeList.h

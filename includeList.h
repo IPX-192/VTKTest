@@ -63,8 +63,6 @@
 #include <vtkSphereWidget.h>
 
 
-
-#include <vtkPlane.h>
 #include <vtkStructuredPoints.h>
 #include <vtkStructuredPointsReader.h>
 #include <vtkGPUVolumeRayCastMapper.h>
@@ -72,12 +70,16 @@
 #include <vtkPiecewiseFunction.h>
 #include <vtkColorTransferFunction.h>
 #include <vtkVolume.h>
-#include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkPolyLine.h>
+#include <vtkLine.h>
+#include <vtkInteractorObserver.h>
+#include <vtkLineSource.h>
+#include <vtkCellArray.h>
 
 #include <vtkUnstructuredGrid.h>
 #include <vtkDataSetMapper.h>
+#include <vtkPointSource.h>
 
 
 

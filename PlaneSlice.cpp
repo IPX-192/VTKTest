@@ -8,6 +8,7 @@ PlaneSlice::PlaneSlice(QWidget *parent)
     ui.setupUi(this);
     vtkOutputWindow::SetGlobalWarningDisplay(0);
 
+    initTest();
 
     renderer = vtkSmartPointer<vtkRenderer>::New();  //VTK创建一个新的渲染器对象，用于将图形数据呈现到屏幕上。
 
@@ -131,7 +132,11 @@ PlaneSlice::PlaneSlice(QWidget *parent)
     //可以触发 vtkCommand::MouseMoveEvent 事件，并将其与 Qt 中的槽函数关联起来
     vtkQTconnect = vtkSmartPointer<vtkEventQtSlotConnect>::New();
     vtkQTconnect->Connect(ui.qvtkWidget->GetRenderWindow()->GetInteractor(),
-                          vtkCommand::LeftButtonPressEvent, this, SLOT(m_mouseClickEvent()));
+                          vtkCommand::LeftButtonPressEvent, this, SLOT(m_mouseClickEvent1()));
+
+
+    vtkQTconnect->Connect(ui.qvtkWidget->GetRenderWindow()->GetInteractor(),
+                          vtkCommand::RightButtonPressEvent, this, SLOT(m_mouseRightEvent()));
 
     //新增
     point1 = vtkSmartPointer<vtkSphereSource>::New();
@@ -164,6 +169,8 @@ PlaneSlice::PlaneSlice(QWidget *parent)
     axesActor->GetZAxisCaptionActor2D()->GetTextActor()->SetTextScaleModeToNone();  //设置z字体大小
     axesActor->GetZAxisCaptionActor2D()->GetCaptionTextProperty()->SetFontSize(10);
     renderer->AddActor(axesActor);
+
+
 }
 
 PlaneSlice::~PlaneSlice()
@@ -178,11 +185,6 @@ void PlaneSlice::m_mouseClickEvent()
         vtkSmartPointer<vtkPropPicker> picker = vtkSmartPointer<vtkPropPicker>::New();
         picker->Pick(clickPos[0], clickPos[1], 0, renderer);
 
-        vtkPoints *pPoints = vtkPoints::New();
-        vtkPolyLine *polyLine = vtkPolyLine::New();
-        vtkUnstructuredGrid *grid = vtkUnstructuredGrid::New();
-        vtkDataSetMapper *mapper = vtkDataSetMapper::New();
-        vtkActor *actor = vtkActor::New();
 
         if (picker->GetActor() != NULL)
         {
@@ -281,6 +283,134 @@ void PlaneSlice::m_mouseClickEvent()
 
     }
 }
+
+void PlaneSlice::m_mouseClickEvent1()
+{
+
+    int* clickPos = interactor->GetEventPosition();
+
+    vtkSmartPointer<vtkPropPicker> picker = vtkSmartPointer<vtkPropPicker>::New();
+    picker->Pick(clickPos[0], clickPos[1], 0, renderer);
+
+
+    if (picker->GetActor() != NULL)
+    {
+        int x = pos_num * 3 + 0;
+        int y = pos_num * 3 + 1;
+        int z = pos_num * 3 + 2;
+        double* pos = picker->GetPickPosition();
+        plane_pos[x] = pos[0];
+        plane_pos[y] = pos[1];
+        plane_pos[z] = pos[2];
+        switch (pos_num)
+        {
+        case 0:
+            point1->SetCenter(pos[0], pos[1], pos[2]);
+            point1mapper->SetInputConnection(point1->GetOutputPort());
+            point1_actor->SetMapper(point1mapper);
+            point1_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
+            renderer->AddActor(point1_actor);
+            break;
+        case 1:
+            point2->SetCenter(pos[0], pos[1], pos[2]);
+            point2mapper->SetInputConnection(point2->GetOutputPort());
+            point2_actor->SetMapper(point2mapper);
+            point2_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
+            renderer->AddActor(point2_actor);
+            break;
+        case 2:
+            point3->SetCenter(pos[0], pos[1], pos[2]);
+            point3mapper->SetInputConnection(point3->GetOutputPort());
+            point3_actor->SetMapper(point3mapper);
+            point3_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
+            renderer->AddActor(point3_actor);
+            break;
+        default:
+            break;
+        }
+    }
+
+    if (pos_num == 2)
+    {
+        vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+        points->InsertNextPoint(plane_pos[0], plane_pos[1], plane_pos[2]);
+        points->InsertNextPoint(plane_pos[3], plane_pos[4], plane_pos[5]);
+        points->InsertNextPoint(plane_pos[6], plane_pos[7], plane_pos[8]);
+
+
+
+        polyLine->GetPointIds()->SetNumberOfIds(points->GetNumberOfPoints());
+        for(int i = 0; i < points->GetNumberOfPoints(); i++)
+        {
+            polyLine->GetPointIds()->SetId(i, i);
+        }
+
+        vtkUnstructuredGrid *grid = vtkUnstructuredGrid::New();
+        grid->Allocate(1, 1);
+        grid->InsertNextCell(polyLine->GetCellType(), polyLine->GetPointIds());
+        grid->SetPoints(points);
+
+
+
+
+        //创建vtkPolyDataMapper将vtkPolyData对象映射到vtkActor对象
+        vtkSmartPointer<vtkDataSetMapper > mapper = vtkSmartPointer<vtkDataSetMapper >::New();
+        mapper->SetInputData(grid);
+
+        //创建vtkActor对象并将其添加到vtkRenderer中
+        vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
+
+        actor->GetProperty()->SetColor(0.4, 0.8, 0.2);
+        actor->SetMapper(mapper);
+        renderer->AddActor(actor);
+    }
+
+    else
+    {
+        m_isClipOk = false;
+        pos_num++;
+        m_mapper->SetInputConnection(m_STLreader->GetOutputPort());
+        renderer->RemoveActor(plane_actor);
+        interactor->Render();
+    }
+}
+
+void PlaneSlice::initTest()
+{
+
+    pointList = vtkSmartPointer<vtkPoints>::New();
+    pointListPolyData = vtkSmartPointer<vtkPolyData>::New();
+    pointListPolyData->SetPoints(pointList);
+    pointListMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    pointListMapper->SetInputData(pointListPolyData);
+    pointListActor = vtkSmartPointer<vtkActor>::New();
+    pointListActor->SetMapper(pointListMapper);
+    pointListActor->GetProperty()->SetColor(0, 0, 1);
+    this->line = vtkSmartPointer<vtkLineSource>::New();
+    this->lineMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    this->lineMapper->SetInputConnection(line->GetOutputPort());
+    this->lineActor = vtkSmartPointer<vtkActor>::New();
+    this->lineActor->SetMapper(this->lineMapper);
+    this->lineActor->GetProperty()->SetColor(0, 1, 0);
+    this->point = vtkSmartPointer<vtkSphereSource>::New();
+    this->point->SetRadius(0.1);
+    this->pointMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    this->pointMapper->SetInputConnection(this->point->GetOutputPort());
+    this->pointActor = vtkSmartPointer<vtkActor>::New();
+    this->pointActor->SetMapper(this->pointMapper);
+    this->pointActor->GetProperty()->SetColor(1, 0, 0);
+    polygons = vtkSmartPointer<vtkCellArray>::New();
+
+    polyLine = vtkPolyLine::New();
+
+}
+
+void PlaneSlice::m_mouseRightEvent()
+{
+
+
+}
+
 
 void PlaneSlice::fun_posClip()
 {
@@ -529,3 +659,4 @@ void PlaneSlice::cilp2()
     //    iren->Start();
 
 }
+
