@@ -81,5 +81,17 @@
 #include <vtkDataSetMapper.h>
 #include <vtkPointSource.h>
 
+#include <vtkLinearExtrusionFilter.h>
+#include <vtkFillHolesFilter.h>
+#include <vtkBooleanOperationPolyDataFilter.h>
+#include <vtkTriangleFilter.h>
+#include <vtkImplicitPolyDataDistance.h>
+#include <vtkIntersectionPolyDataFilter.h>
+#include <vtkClipClosedSurface.h>
+#include <vtkMath.h>
+#include <vtkPlaneCollection.h>
+#include <vtkContourFilter.h>
+
+
 
 

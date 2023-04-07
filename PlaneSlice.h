@@ -39,6 +39,7 @@ private:
 
     bool m_IsSlicing = false;
     bool m_isClipOk = false;
+    bool running_mode = false;
     int pos_num = 0;
     float plane_pos[90];
 
@@ -75,6 +76,13 @@ private:
     vtkSmartPointer<vtkCellArray> polygons;
     vtkPolyLine *polyLine;
 
+    //新增2
+    vtkSmartPointer<vtkLineSource> lineSource1, lineSource2, lineSource3;
+    vtkSmartPointer<vtkPolyDataMapper> line_mapper1, line_mapper2, line_mapper3;
+    vtkSmartPointer<vtkActor> lineActor1, lineActor2, lineActor3;
+
+    vtkSmartPointer<vtkActor> clipActor;
+    vtkSmartPointer<vtkClipClosedSurface> clipper;
 
 
 public slots:
@@ -82,6 +90,5 @@ public slots:
 
     void m_mouseClickEvent1();
 
-    void m_mouseRightEvent();
 
 };

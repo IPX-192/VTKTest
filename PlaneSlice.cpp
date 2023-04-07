@@ -68,7 +68,8 @@ PlaneSlice::PlaneSlice(QWidget *parent)
             m_STLreader->Update();    //更新VTK读取器以便读取文件
             m_mapper->SetInputConnection(m_STLreader->GetOutputPort());
             m_actors->SetMapper(m_mapper);
-            m_actors->GetProperty()->SetColor(0.6, 0.6, 0.6);
+            m_actors->GetProperty()->SetColor(0.7,0.7,0.7);
+            m_actors->GetProperty()->SetOpacity(0.5);
             renderer->AddActor(m_actors);
         }
         renderer->Render();
@@ -88,6 +89,10 @@ PlaneSlice::PlaneSlice(QWidget *parent)
         renderer->RemoveActor(point2_actor);
         renderer->RemoveActor(point3_actor);
         renderer->RemoveActor(plane_actor);
+        renderer->RemoveActor(clipActor);
+        renderer->RemoveActor(lineActor1);
+        renderer->RemoveActor(lineActor2);
+        renderer->RemoveActor(lineActor3);
         ui.qvtkWidget->GetRenderWindow()->GetInteractor()->Render();
     });
     connect(act_Settings, &QAction::triggered, this, [=]()
@@ -134,10 +139,6 @@ PlaneSlice::PlaneSlice(QWidget *parent)
     vtkQTconnect->Connect(ui.qvtkWidget->GetRenderWindow()->GetInteractor(),
                           vtkCommand::LeftButtonPressEvent, this, SLOT(m_mouseClickEvent1()));
 
-
-    vtkQTconnect->Connect(ui.qvtkWidget->GetRenderWindow()->GetInteractor(),
-                          vtkCommand::RightButtonPressEvent, this, SLOT(m_mouseRightEvent()));
-
     //新增
     point1 = vtkSmartPointer<vtkSphereSource>::New();
     point1_actor = vtkSmartPointer<vtkActor>::New();
@@ -152,6 +153,15 @@ PlaneSlice::PlaneSlice(QWidget *parent)
     point3mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     point3->SetRadius(3);
 
+    lineSource1 = vtkSmartPointer<vtkLineSource>::New();
+    lineSource2 = vtkSmartPointer<vtkLineSource>::New();
+    lineSource3 = vtkSmartPointer<vtkLineSource>::New();
+    line_mapper1 = vtkSmartPointer<vtkPolyDataMapper>::New();
+    line_mapper2 = vtkSmartPointer<vtkPolyDataMapper>::New();
+    line_mapper3 = vtkSmartPointer<vtkPolyDataMapper>::New();
+    lineActor1 = vtkSmartPointer<vtkActor>::New();
+    lineActor2 = vtkSmartPointer<vtkActor>::New();
+    lineActor3 = vtkSmartPointer<vtkActor>::New();
 
     axesTransformer = vtkSmartPointer<vtkTransform>::New();
     axesTransformer->Translate(0, 0, 0);
@@ -178,107 +188,194 @@ PlaneSlice::~PlaneSlice()
 
 void PlaneSlice::m_mouseClickEvent()
 {
-    if (m_IsSlicing)
+    if (running_mode)    // 生成平面来切割
     {
-        int* clickPos = interactor->GetEventPosition();
-
-        vtkSmartPointer<vtkPropPicker> picker = vtkSmartPointer<vtkPropPicker>::New();
-        picker->Pick(clickPos[0], clickPos[1], 0, renderer);
-
-
-        if (picker->GetActor() != NULL)
+        if (m_IsSlicing)
         {
-            int x = pos_num * 3 + 0;
-            int y = pos_num * 3 + 1;
-            int z = pos_num * 3 + 2;
-            double* pos = picker->GetPickPosition();
-            plane_pos[x] = pos[0];
-            plane_pos[y] = pos[1];
-            plane_pos[z] = pos[2];
-            switch (pos_num)
+            int* clickPos = interactor->GetEventPosition();
+
+            vtkSmartPointer<vtkPropPicker> picker = vtkSmartPointer<vtkPropPicker>::New();
+            picker->Pick(clickPos[0], clickPos[1], 0, renderer);
+
+            if (picker->GetActor() != NULL)
             {
-            case 0:
-                point1->SetCenter(pos[0], pos[1], pos[2]);
-                point1mapper->SetInputConnection(point1->GetOutputPort());
-                point1_actor->SetMapper(point1mapper);
-                point1_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
-                renderer->AddActor(point1_actor);
-                break;
-            case 1:
-                point2->SetCenter(pos[0], pos[1], pos[2]);
-                point2mapper->SetInputConnection(point2->GetOutputPort());
-                point2_actor->SetMapper(point2mapper);
-                point2_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
-                renderer->AddActor(point2_actor);
-                break;
-            case 2:
-                point3->SetCenter(pos[0], pos[1], pos[2]);
-                point3mapper->SetInputConnection(point3->GetOutputPort());
-                point3_actor->SetMapper(point3mapper);
-                point3_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
-                renderer->AddActor(point3_actor);
-                break;
-            default:
-                break;
+                int x = pos_num * 3 + 0;
+                int y = pos_num * 3 + 1;
+                int z = pos_num * 3 + 2;
+                double* pos = picker->GetPickPosition();
+                plane_pos[x] = pos[0];
+                plane_pos[y] = pos[1];
+                plane_pos[z] = pos[2];
+                switch (pos_num)
+                {
+                case 0:
+                    point1->SetCenter(pos[0], pos[1], pos[2]);
+                    point1mapper->SetInputConnection(point1->GetOutputPort());
+                    point1_actor->SetMapper(point1mapper);
+                    point1_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
+                    renderer->AddActor(point1_actor);
+                    break;
+                case 1:
+                    point2->SetCenter(pos[0], pos[1], pos[2]);
+                    point2mapper->SetInputConnection(point2->GetOutputPort());
+                    point2_actor->SetMapper(point2mapper);
+                    point2_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
+                    renderer->AddActor(point2_actor);
+                    break;
+                case 2:
+                    point3->SetCenter(pos[0], pos[1], pos[2]);
+                    point3mapper->SetInputConnection(point3->GetOutputPort());
+                    point3_actor->SetMapper(point3mapper);
+                    point3_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
+                    renderer->AddActor(point3_actor);
+                    break;
+                default:
+                    break;
+                }
+            }
+
+            if (pos_num == 2)
+            {
+                vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+                points->InsertNextPoint(plane_pos[0], plane_pos[1], plane_pos[2]);
+                points->InsertNextPoint(plane_pos[3], plane_pos[4], plane_pos[5]);
+                points->InsertNextPoint(plane_pos[6], plane_pos[7], plane_pos[8]);
+
+                planeSource = vtkSmartPointer<vtkPlaneSource>::New();
+                planeSource->SetOrigin(points->GetPoint(0));
+                planeSource->SetPoint1(points->GetPoint(1));
+                planeSource->SetPoint2(points->GetPoint(2));
+
+                plane = vtkSmartPointer<vtkPlane>::New();
+                plane->SetNormal(planeSource->GetNormal());
+                plane->SetOrigin(planeSource->GetOrigin());
+
+                plane_mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+                plane_actor = vtkSmartPointer<vtkActor>::New();
+                plane_mapper->SetInputConnection(planeSource->GetOutputPort());
+                plane_actor->SetMapper(plane_mapper);
+                plane_actor->GetProperty()->SetColor(0.75, 0.65, 0.65);
+                plane_actor->GetProperty()->SetOpacity(0.8);
+
+                //renderer->AddActor(plane_actor);
+                pos_num = 0;
+
+                vtkSmartPointer<vtkCutter> cutter = vtkSmartPointer<vtkCutter>::New();
+                cutter->SetCutFunction(plane);
+                cutter->SetInputData(m_STLreader->GetOutput());  // 不走内存的方式
+                cutter->SetSortByToSortByValue();
+                vtkSmartPointer<vtkPolyDataMapper> cutterMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+                cutterMapper->SetInputConnection(cutter->GetOutputPort());
+                cutterMapper->ScalarVisibilityOn();
+                plane_actor->GetProperty()->SetColor(0.4, 0.8, 0.2);
+                plane_actor->GetProperty()->SetLineWidth(5);
+                plane_actor->SetMapper(cutterMapper);
+                renderer->AddActor(plane_actor);
+
+                m_isClipOk = true;
+
+                interactor->Render();
+            }
+            else
+            {
+                m_isClipOk = false;
+                pos_num++;
+                m_mapper->SetInputConnection(m_STLreader->GetOutputPort());
+                renderer->RemoveActor(plane_actor);
+                interactor->Render();
             }
         }
-
-        if (pos_num == 2)
+    }
+    else   // ROI切割
+    {
+        if (m_IsSlicing)
         {
-            vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-            points->InsertNextPoint(plane_pos[0], plane_pos[1], plane_pos[2]);
-            points->InsertNextPoint(plane_pos[3], plane_pos[4], plane_pos[5]);
-            points->InsertNextPoint(plane_pos[6], plane_pos[7], plane_pos[8]);
+            int* clickPos = interactor->GetEventPosition();
 
-            planeSource = vtkSmartPointer<vtkPlaneSource>::New();
-            planeSource->SetOrigin(points->GetPoint(0));
-            planeSource->SetPoint1(points->GetPoint(1));
-            planeSource->SetPoint2(points->GetPoint(2));
+            vtkSmartPointer<vtkPropPicker> picker = vtkSmartPointer<vtkPropPicker>::New();
+            picker->Pick(clickPos[0], clickPos[1], 0, renderer);
 
-            plane = vtkSmartPointer<vtkPlane>::New();
-            plane->SetNormal(planeSource->GetNormal());
-            plane->SetOrigin(planeSource->GetOrigin());
+            if (picker->GetActor() != NULL)
+            {
+                int x = pos_num * 3 + 0;
+                int y = pos_num * 3 + 1;
+                int z = pos_num * 3 + 2;
+                double* pos = picker->GetPickPosition();
+                plane_pos[x] = pos[0];
+                plane_pos[y] = pos[1];
+                plane_pos[z] = pos[2];
+                switch (pos_num)
+                {
+                case 0:
+                    point1->SetCenter(pos[0], pos[1], pos[2]);
+                    point1mapper->SetInputConnection(point1->GetOutputPort());
+                    point1_actor->SetMapper(point1mapper);
+                    point1_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
+                    renderer->AddActor(point1_actor);
+                    lineSource1->SetPoint1(pos[0], pos[1], pos[2]);
+                    lineSource3->SetPoint2(pos[0], pos[1], pos[2]);
+                    break;
+                case 1:
+                    point2->SetCenter(pos[0], pos[1], pos[2]);
+                    point2mapper->SetInputConnection(point2->GetOutputPort());
+                    point2_actor->SetMapper(point2mapper);
+                    point2_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
+                    renderer->AddActor(point2_actor);
+                    lineSource1->SetPoint2(pos[0], pos[1], pos[2]);
+                    lineSource2->SetPoint1(pos[0], pos[1], pos[2]);
+                    lineSource1->Update();
+                    line_mapper1->SetInputConnection(lineSource1->GetOutputPort());
+                    lineActor1->SetMapper(line_mapper1);
+                    lineActor1->GetProperty()->SetColor(1,0,0);
+                    lineActor1->GetProperty()->SetLineWidth(2);
+                    renderer->AddActor(lineActor1);
+                    break;
+                case 2:
+                    point3->SetCenter(pos[0], pos[1], pos[2]);
+                    point3mapper->SetInputConnection(point3->GetOutputPort());
+                    point3_actor->SetMapper(point3mapper);
+                    point3_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
+                    renderer->AddActor(point3_actor);
+                    lineSource2->SetPoint2(pos[0], pos[1], pos[2]);
+                    lineSource3->SetPoint1(pos[0], pos[1], pos[2]);
+                    lineSource2->Update();
+                    line_mapper2->SetInputConnection(lineSource2->GetOutputPort());
+                    lineActor2->SetMapper(line_mapper2);
+                    lineActor2->GetProperty()->SetColor(1, 0, 0);
+                    lineActor2->GetProperty()->SetLineWidth(2);
+                    renderer->AddActor(lineActor2);
+                    lineSource3->Update();
+                    line_mapper3->SetInputConnection(lineSource3->GetOutputPort());
+                    lineActor3->SetMapper(line_mapper3);
+                    lineActor3->GetProperty()->SetColor(1, 0, 0);
+                    lineActor3->GetProperty()->SetLineWidth(2);
+                    renderer->AddActor(lineActor3);
+                    break;
+                default:
+                    break;
+                }
+            }
 
-            plane_mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-            plane_actor = vtkSmartPointer<vtkActor>::New();
-            plane_mapper->SetInputConnection(planeSource->GetOutputPort());
-            plane_actor->SetMapper(plane_mapper);
-            plane_actor->GetProperty()->SetColor(0.75,0.65,0.65);
-            plane_actor->GetProperty()->SetOpacity(0.8);
+            if (pos_num == 2)
+            {
+                m_isClipOk = true;
+                pos_num = 0;
+                interactor->Render();
 
-            //renderer->AddActor(plane_actor);
-            pos_num = 0;
+            }
+            else
+            {
+                m_isClipOk = false;
+                pos_num++;
+                m_mapper->SetInputConnection(m_STLreader->GetOutputPort());
+                if (clipActor != NULL)
+                {
+                    renderer->RemoveActor(clipActor);
+                    renderer->AddActor(m_actors);
+                }
 
-            vtkSmartPointer<vtkCutter> cutter = vtkSmartPointer<vtkCutter>::New();
-            cutter->SetCutFunction(plane);
-            cutter->SetInputData(m_STLreader->GetOutput());  // 不走内存的方式
-            cutter->SetSortByToSortByValue();
-            vtkSmartPointer<vtkPolyDataMapper> cutterMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-            cutterMapper->SetInputConnection(cutter->GetOutputPort());
-            cutterMapper->ScalarVisibilityOn();
-            plane_actor->GetProperty()->SetColor(0.4, 0.8, 0.2);
-            plane_actor->GetProperty()->SetLineWidth(5);
-            plane_actor->SetMapper(cutterMapper);
-            renderer->AddActor(plane_actor);
-            // 获取线条
-            //vtkSmartPointer<vtkStripper> stripper = vtkSmartPointer<vtkStripper>::New();
-            //stripper->SetInputConnection(cutter->GetOutputPort()); // valid circle
-            //stripper->JoinContiguousSegmentsOn();
-            //stripper->Update();
-            //vtkSmartPointer<vtkActor> imageActor3 = vtkSmartPointer<vtkActor>::New();
-            //vtkSmartPointer<vtkPolyDataMapper> tempMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-            //tempMapper->SetInputData(stripper->GetOutput());
-            //imageActor3->SetMapper(tempMapper);
-            //imageActor3->GetProperty()->SetColor(1, 0, 0);
-            //renderer->AddActor(imageActor3);
-        }
-        else
-        {
-            m_isClipOk = false;
-            pos_num++;
-            m_mapper->SetInputConnection(m_STLreader->GetOutputPort());
-            renderer->RemoveActor(plane_actor);
-            interactor->Render();
+                interactor->Render();
+            }
         }
 
     }
@@ -287,92 +384,6 @@ void PlaneSlice::m_mouseClickEvent()
 void PlaneSlice::m_mouseClickEvent1()
 {
 
-    int* clickPos = interactor->GetEventPosition();
-
-    vtkSmartPointer<vtkPropPicker> picker = vtkSmartPointer<vtkPropPicker>::New();
-    picker->Pick(clickPos[0], clickPos[1], 0, renderer);
-
-
-    if (picker->GetActor() != NULL)
-    {
-        int x = pos_num * 3 + 0;
-        int y = pos_num * 3 + 1;
-        int z = pos_num * 3 + 2;
-        double* pos = picker->GetPickPosition();
-        plane_pos[x] = pos[0];
-        plane_pos[y] = pos[1];
-        plane_pos[z] = pos[2];
-        switch (pos_num)
-        {
-        case 0:
-            point1->SetCenter(pos[0], pos[1], pos[2]);
-            point1mapper->SetInputConnection(point1->GetOutputPort());
-            point1_actor->SetMapper(point1mapper);
-            point1_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
-            renderer->AddActor(point1_actor);
-            break;
-        case 1:
-            point2->SetCenter(pos[0], pos[1], pos[2]);
-            point2mapper->SetInputConnection(point2->GetOutputPort());
-            point2_actor->SetMapper(point2mapper);
-            point2_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
-            renderer->AddActor(point2_actor);
-            break;
-        case 2:
-            point3->SetCenter(pos[0], pos[1], pos[2]);
-            point3mapper->SetInputConnection(point3->GetOutputPort());
-            point3_actor->SetMapper(point3mapper);
-            point3_actor->GetProperty()->SetColor(1.0, 0.0, 0.0); // 设置颜色为红色
-            renderer->AddActor(point3_actor);
-            break;
-        default:
-            break;
-        }
-    }
-
-    if (pos_num == 2)
-    {
-        vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-        points->InsertNextPoint(plane_pos[0], plane_pos[1], plane_pos[2]);
-        points->InsertNextPoint(plane_pos[3], plane_pos[4], plane_pos[5]);
-        points->InsertNextPoint(plane_pos[6], plane_pos[7], plane_pos[8]);
-
-
-
-        polyLine->GetPointIds()->SetNumberOfIds(points->GetNumberOfPoints());
-        for(int i = 0; i < points->GetNumberOfPoints(); i++)
-        {
-            polyLine->GetPointIds()->SetId(i, i);
-        }
-
-        vtkUnstructuredGrid *grid = vtkUnstructuredGrid::New();
-        grid->Allocate(1, 1);
-        grid->InsertNextCell(polyLine->GetCellType(), polyLine->GetPointIds());
-        grid->SetPoints(points);
-
-
-
-
-        //创建vtkPolyDataMapper将vtkPolyData对象映射到vtkActor对象
-        vtkSmartPointer<vtkDataSetMapper > mapper = vtkSmartPointer<vtkDataSetMapper >::New();
-        mapper->SetInputData(grid);
-
-        //创建vtkActor对象并将其添加到vtkRenderer中
-        vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
-
-        actor->GetProperty()->SetColor(0.4, 0.8, 0.2);
-        actor->SetMapper(mapper);
-        renderer->AddActor(actor);
-    }
-
-    else
-    {
-        m_isClipOk = false;
-        pos_num++;
-        m_mapper->SetInputConnection(m_STLreader->GetOutputPort());
-        renderer->RemoveActor(plane_actor);
-        interactor->Render();
-    }
 }
 
 void PlaneSlice::initTest()
@@ -405,43 +416,122 @@ void PlaneSlice::initTest()
 
 }
 
-void PlaneSlice::m_mouseRightEvent()
-{
-
-
-}
-
-
 void PlaneSlice::fun_posClip()
 {
-    if (m_isClipOk == true)
+    if (running_mode)    // 生成平面来切割
     {
-        //可以将 vtkPolyData 对象沿着一个平面进行裁剪，保留裁剪平面一侧的几何形状，去除另一侧的几何形状，从而实现裁剪功能
-        //裁剪操作会改变原始的 vtkPolyData 对象，因此需要进行备份或使用副本
-        vtkSmartPointer<vtkClipPolyData> clipper = vtkSmartPointer<vtkClipPolyData>::New();
-        clipper->SetInputConnection(m_STLreader->GetOutputPort());
-        clipper->SetClipFunction(plane);
-        clipper->InsideOutOn();
+        if (m_isClipOk == true)
+        {
+            vtkSmartPointer<vtkClipPolyData> clipper =
+                    vtkSmartPointer<vtkClipPolyData>::New();
+            clipper->SetInputConnection(m_STLreader->GetOutputPort());
+            clipper->SetClipFunction(plane);
+            clipper->InsideOutOn();
+            clipper->Update();
+
+            m_mapper->SetInputConnection(clipper->GetOutputPort());
+            interactor->Render();
+        }
+    }
+    else
+    {
+        double center_points1[3], center_points2[3], center_points3[3];
+        center_points1[0] = (plane_pos[6] + plane_pos[3]) / 2;
+        center_points1[1] = (plane_pos[7] + plane_pos[4]) / 2;
+        center_points1[2] = (plane_pos[8] + plane_pos[5]) / 2;
+        center_points2[0] = (plane_pos[3] + plane_pos[0]) / 2;
+        center_points2[1] = (plane_pos[4] + plane_pos[1]) / 2;
+        center_points2[2] = (plane_pos[5] + plane_pos[2]) / 2;
+        center_points3[0] = (plane_pos[0] + plane_pos[6]) / 2;
+        center_points3[1] = (plane_pos[1] + plane_pos[7]) / 2;
+        center_points3[2] = (plane_pos[2] + plane_pos[8]) / 2;
+
+        double vec1[3], vec2[3], vec3[3];
+        vec1[0] = plane_pos[6] - plane_pos[3];
+        vec1[1] = plane_pos[7] - plane_pos[4];
+        vec1[2] = plane_pos[8] - plane_pos[5];
+        vec2[0] = plane_pos[3] - plane_pos[0];
+        vec2[1] = plane_pos[4] - plane_pos[1];
+        vec2[2] = plane_pos[5] - plane_pos[2];
+        vec3[0] = plane_pos[0] - plane_pos[6];
+        vec3[1] = plane_pos[1] - plane_pos[7];
+        vec3[2] = plane_pos[2] - plane_pos[8];
+
+        double normal1[3], normal2[3], normal3[3], vec_eye[3];
+        vec_eye[0] = renderer->GetActiveCamera()->GetDirectionOfProjection()[0];
+        vec_eye[1] = renderer->GetActiveCamera()->GetDirectionOfProjection()[1];
+        vec_eye[2] = renderer->GetActiveCamera()->GetDirectionOfProjection()[2];
+
+        vtkMath::Cross(vec1, vec_eye, normal1);
+        vtkMath::Cross(vec2, vec_eye, normal2);
+        vtkMath::Cross(vec3, vec_eye, normal3);
+        vtkMath::Normalize(normal1);
+        vtkMath::Normalize(normal2);
+        vtkMath::Normalize(normal3);
+
+        vtkNew<vtkPlane> plane1;
+        plane1->SetOrigin(center_points1[0], center_points1[1], center_points1[2]);
+        plane1->SetNormal(normal1);
+        vtkNew<vtkPlane> plane2;
+        plane2->SetOrigin(center_points2[0], center_points2[1], center_points2[2]);
+        plane2->SetNormal(normal2);
+        vtkNew<vtkPlane> plane3;
+        plane3->SetOrigin(center_points3[0], center_points3[1], center_points3[2]);
+        plane3->SetNormal(normal3);
+
+        vtkNew<vtkPlaneCollection> planes;
+        planes->AddItem(plane1);
+        planes->AddItem(plane2);
+        planes->AddItem(plane3);
+
+        clipper = vtkSmartPointer<vtkClipClosedSurface>::New();
+        clipper->SetInputData(m_STLreader->GetOutput());
+        clipper->SetClippingPlanes(planes);
         clipper->Update();
 
-        m_mapper->SetInputConnection(clipper->GetOutputPort());
+        vtkSmartPointer<vtkCleanPolyData> upperJawCleaner = vtkSmartPointer<vtkCleanPolyData>::New();
+        upperJawCleaner->SetInputData(clipper->GetOutput());
+        upperJawCleaner->Update();
+        vtkNew<vtkTriangleFilter> upfilter;
+        upfilter->SetInputConnection(upperJawCleaner->GetOutputPort());
+        upfilter->Update();
+
+
+        vtkNew<vtkPolyDataMapper> clipMapper;
+        clipMapper->SetInputConnection(clipper->GetOutputPort());
+
+        clipActor = vtkSmartPointer<vtkActor>::New();
+        clipActor->SetMapper(clipMapper);
+        clipActor->GetProperty()->SetColor(0.7, 0.7, 0.7);
+        clipActor->GetProperty()->SetInterpolationToFlat();
+        renderer->AddActor(clipActor);
+
+        renderer->RemoveActor(m_actors);
         interactor->Render();
+
     }
 }
 
 void PlaneSlice::fun_negClip()
 {
-    if (m_isClipOk == true)
+    if (running_mode)    // 生成平面来切割
     {
-        vtkSmartPointer<vtkClipPolyData> clipper =
-                vtkSmartPointer<vtkClipPolyData>::New();
-        clipper->SetInputConnection(m_STLreader->GetOutputPort());
-        clipper->SetClipFunction(plane);
-        clipper->InsideOutOff();
-        clipper->Update();
+        if (m_isClipOk == true)
+        {
+            vtkSmartPointer<vtkClipPolyData> clipper =
+                    vtkSmartPointer<vtkClipPolyData>::New();
+            clipper->SetInputConnection(m_STLreader->GetOutputPort());
+            clipper->SetClipFunction(plane);
+            clipper->InsideOutOff();
+            clipper->Update();
 
-        m_mapper->SetInputConnection(clipper->GetOutputPort());
-        interactor->Render();
+            m_mapper->SetInputConnection(clipper->GetOutputPort());
+            interactor->Render();
+        }
+    }
+    else
+    {
+
     }
 }
 
@@ -596,67 +686,6 @@ void PlaneSlice::cilpmodel()
 
 void PlaneSlice::cilp2()
 {
-    //    vtkSmartPointer<vtkXMLPolyDataReader> reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
-    //    reader->SetFileName("E:\\TestData\\cow.vtp");
-
-    //    vtkSmartPointer<vtkPolyDataNormals> cow_normals = vtkSmartPointer<vtkPolyDataNormals>::New();
-    //    cow_normals->SetInputConnection(reader->GetOutputPort());
-
-    //    vtkSmartPointer<vtkPlane> plane = vtkSmartPointer<vtkPlane>::New();
-    //    plane->SetOrigin(0.25, 0.0, 0.0);
-    //    plane->SetNormal(-1, -1, 0);
-
-    //    vtkSmartPointer<vtkClipPolyData> clipper = vtkSmartPointer<vtkClipPolyData>::New();
-    //    clipper->SetInputConnection(cow_normals->GetOutputPort());
-    //    clipper->SetClipFunction(plane);
-    //    clipper->GenerateClipScalarsOn();
-    //    clipper->GenerateClippedOutputOn();
-    //    clipper->SetValue(0.5);
-
-    //    vtkSmartPointer<vtkPolyDataMapper> clip_mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-    //    clip_mapper->SetInputConnection(clipper->GetOutputPort());
-    //    clip_mapper->ScalarVisibilityOff();
-
-    //    vtkSmartPointer<vtkProperty> backProp = vtkSmartPointer<vtkProperty>::New();
-    //    backProp->SetDiffuseColor(1.00, 0.388, 0.278);
-
-    //    vtkSmartPointer<vtkActor> clip_actor = vtkSmartPointer<vtkActor>::New();
-    //    clip_actor->SetMapper(clip_mapper);
-    //    clip_actor->GetProperty()->SetColor(.200, .631, .788);
-    //    clip_actor->SetBackfaceProperty(backProp);
-
-
-    //    vtkSmartPointer<vtkPolyDataMapper> rest_mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-    //    rest_mapper->SetInputConnection(clipper->GetClippedOutputPort());
-    //    rest_mapper->ScalarVisibilityOff();
-
-    //    vtkSmartPointer<vtkActor> rest_actor = vtkSmartPointer<vtkActor>::New();
-    //    rest_actor->SetMapper(rest_mapper);
-    //    rest_actor->GetProperty()->SetRepresentationToWireframe();
-
-
-    //    vtkSmartPointer<vtkRenderer> renderer = vtkSmartPointer<vtkRenderer>::New();
-    //    renderer->AddActor(clip_actor);
-    //    renderer->AddActor(rest_actor);
-    //    renderer->SetBackground(1.0, 1.0, 1.0);
-
-
-    //    vtkSmartPointer<vtkRenderWindow> renWin = vtkSmartPointer<vtkRenderWindow>::New();
-    //    renWin->AddRenderer(renderer);
-    //    renWin->SetSize(640, 480);
-    //    renWin->Render();
-    //    renWin->SetWindowName("ClipExample");
-
-    //    vtkSmartPointer<vtkRenderWindowInteractor> iren =
-    //            vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    //    iren->SetRenderWindow(renWin);
-
-    //    vtkSmartPointer<vtkInteractorStyleTrackballCamera> style =
-    //            vtkSmartPointer<vtkInteractorStyleTrackballCamera>::New();
-    //    iren->SetInteractorStyle(style);
-
-    //    iren->Initialize();
-    //    iren->Start();
 
 }
 
