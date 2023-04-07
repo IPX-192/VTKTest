@@ -137,7 +137,7 @@ PlaneSlice::PlaneSlice(QWidget *parent)
     //可以触发 vtkCommand::MouseMoveEvent 事件，并将其与 Qt 中的槽函数关联起来
     vtkQTconnect = vtkSmartPointer<vtkEventQtSlotConnect>::New();
     vtkQTconnect->Connect(ui.qvtkWidget->GetRenderWindow()->GetInteractor(),
-                          vtkCommand::LeftButtonPressEvent, this, SLOT(m_mouseClickEvent1()));
+                          vtkCommand::LeftButtonPressEvent, this, SLOT(m_mouseClickEvent()));
 
     //新增
     point1 = vtkSmartPointer<vtkSphereSource>::New();
